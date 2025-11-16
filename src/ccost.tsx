@@ -150,8 +150,8 @@ export default function Command() {
             subtitle={`$${days.reduce((s, d) => s + (d.totalCost ?? 0), 0).toFixed(2)}`}
             icon={{ source: "dollarsign.circle.fill", tintColor: Color.Green }}
             accessories={[
-              { text: `Input: ${days.reduce((s, d) => s + (d.inputTokens ?? 0), 0)}`, color: Color.SecondaryText },
-              { text: `Output: ${days.reduce((s, d) => s + (d.outputTokens ?? 0), 0)}`, color: Color.SecondaryText },
+              { text: `In: ${days.reduce((s, d) => s + (d.inputTokens ?? 0), 0)}`, color: Color.SecondaryText },
+              { text: `Out: ${days.reduce((s, d) => s + (d.outputTokens ?? 0), 0)}`, color: Color.SecondaryText },
               { text: `Tokens: ${days.reduce((s, d) => s + (d.totalTokens ?? 0), 0)}`, color: Color.Blue },
             ]}
           />
