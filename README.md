@@ -9,3 +9,4 @@ git clone https://github.com/thisisadityapatel/ccost
 cd ccost
 make
 ```
+<img width="854" height="560" alt="Screenshot 2025-11-16 at 6 54 37 PM" src="https://github.com/user-attachments/assets/15896f66-716b-414c-aa33-95a97519dd20" />
