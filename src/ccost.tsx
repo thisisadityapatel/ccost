@@ -130,10 +130,10 @@ export default function Command() {
             tooltip: getTooltip(day),
           }}
           accessories={[
-            { text: { value: `$${(day.totalCost ?? 0).toFixed(2)}`, color: Color.Green } },
-            { text: { value: `Input: ${day.inputTokens ?? 0}`, color: Color.SecondaryText } },
-            { text: { value: `Output: ${day.outputTokens ?? 0}`, color: Color.SecondaryText } },
+            { text: { value: `In: ${day.inputTokens ?? 0}`, color: Color.SecondaryText } },
+            { text: { value: `Out: ${day.outputTokens ?? 0}`, color: Color.SecondaryText } },
             { text: { value: `Tokens: ${day.totalTokens ?? 0}`, color: Color.Blue } },
+            { text: { value: `$${(day.totalCost ?? 0).toFixed(2)}`, color: Color.Green } },
           ]}
           actions={
             <ActionPanel>
