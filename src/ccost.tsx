@@ -8,13 +8,19 @@ const execAsync = promisify(exec);
 
 interface Model {
   name: string;
-  cost: number;
+  cost?: number;
   color: Color;
+  inputTokens?: number;
+  outputTokens?: number;
+  totalTokens?: number;
 }
 
 interface Day {
   date: string;
-  totalCost: number;
+  totalCost?: number;
+  inputTokens?: number;
+  outputTokens?: number;
+  totalTokens?: number;
   models: Model[];
 }
 
@@ -27,56 +33,60 @@ async function run(cmd: string): Promise<string> {
 
 export default function Command() {
   const [days, setDays] = useState<Day[]>([]);
-  const [totalCost, setTotalCost] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
 
   const fetch = async () => {
     setIsLoading(true);
     try {
-      const raw = await run("npx ccusage@latest daily --json");
+      const raw = await run("npx ccusage@latest weekly --json");
       const data = JSON.parse(raw);
-      if (!data.daily?.length) throw new Error("No usage data");
-
-      const now = new Date();
-      const weekAgo = new Date(now);
-      weekAgo.setDate(now.getDate() - 6);
-
-      const recent = data.daily
-        .filter((d: any) => new Date(d.date) >= weekAgo)
-        .sort((a: any, b: any) => new Date(b.date) - new Date(a.date))
-        .slice(0, 7);
+      if (!data.weekly?.length) throw new Error("No usage data");
 
       const colorMap: Record<string, Color> = {
-        sonnet: Color.Green,
-        haiku: Color.Blue,
-        opus: Color.Purple,
+        sonnet: Color.Blue,
+        haiku: Color.Purple,
+        opus: Color.Green,
       };
+
+      const now = new Date();
+      const twelveWeeksAgo = new Date(now);
+      twelveWeeksAgo.setDate(now.getDate() - 12 * 7);
+
+      const recent = data.weekly
+        .filter((d: any) => new Date(d.week) >= twelveWeeksAgo)
+        .sort((a: any, b: any) => new Date(b.week).getTime() - new Date(a.week).getTime());
 
       const normalized: Day[] = recent.map((d: any) => {
         const models = (d.modelBreakdowns ?? []).map((m: any) => {
           const key = m.modelName.includes("sonnet")
             ? "sonnet"
             : m.modelName.includes("haiku")
-            ? "haiku"
-            : m.modelName.includes("opus")
-            ? "opus"
-            : "gray";
+              ? "haiku"
+              : m.modelName.includes("opus")
+                ? "opus"
+                : "gray";
+
           return {
-            name: m.modelName.replace(/-\d{8}.*$/, ""),
+            name: m.modelName,
             cost: m.cost,
             color: colorMap[key] ?? Color.SecondaryText,
+            inputTokens: m.inputTokens ?? 0,
+            outputTokens: m.outputTokens ?? 0,
+            totalTokens: m.totalTokens ?? 0,
           };
         });
+
         return {
-          date: d.date.split("T")[0],
+          date: d.week,
           totalCost: d.totalCost,
+          inputTokens: d.inputTokens,
+          outputTokens: d.outputTokens,
+          totalTokens: d.totalTokens,
           models,
         };
       });
 
-      const weekTotal = normalized.reduce((s, d) => s + d.totalCost, 0);
       setDays(normalized);
-      setTotalCost(weekTotal);
     } catch (e: any) {
       showToast({ style: Toast.Style.Failure, title: "Error", message: e.message });
     } finally {
@@ -88,7 +98,7 @@ export default function Command() {
     fetch();
   }, []);
 
-  const formatLocalDate = (isoString: string): string =>
+  const formatDate = (isoString: string): string =>
     new Date(isoString).toLocaleDateString("en-CA", {
       timeZone: "America/Toronto",
       month: "short",
@@ -96,29 +106,35 @@ export default function Command() {
     });
 
   const getTooltip = (day: Day): string => {
-    const header = `${formatLocalDate(day.date)} — $${day.totalCost.toFixed(2)}`;
+    const header = `${formatDate(day.date)} — $${(day.totalCost ?? 0).toFixed(2)} | ${day.totalTokens ?? 0} tokens`;
     if (!day.models.length) return header;
 
-    const modelLines = day.models.map(m => {
+    const modelLines = day.models.map((m) => {
       const dot =
-        m.color === Color.Green ? "🟢" :
-        m.color === Color.Blue ? "🔵" :
-        m.color === Color.Purple ? "🟣" : "⚫";
-      return `${dot} $${m.cost.toFixed(2)} - ${m.name}`;
+        m.color === Color.Green ? "🟢" : m.color === Color.Blue ? "🔵" : m.color === Color.Purple ? "🟣" : "⚫";
+      return `${dot} $${(m.cost ?? 0).toFixed(2)} | Input: ${m.inputTokens ?? 0} | Output: ${m.outputTokens ?? 0} | Tokens: ${m.totalTokens ?? 0} - ${m.name}`;
     });
 
     return [header, "", ...modelLines].join("\n");
   };
 
   return (
-    <List isLoading={isLoading} navigationTitle="Claude Cost (7d)">
-      {days.map(day => (
+    <List isLoading={isLoading} navigationTitle="Claude Cost (12 Weeks)">
+      {days.map((day) => (
         <List.Item
           key={day.date}
           icon={{ source: "calendar", tooltip: getTooltip(day) }}
-          title={{ value: formatLocalDate(day.date), tooltip: getTooltip(day) }}
-          subtitle={{ value: `${day.models.length} model${day.models.length > 1 ? "s" : ""}`, tooltip: getTooltip(day) }}
-          accessories={[{ text: { value: `$${day.totalCost.toFixed(2)}`, color: Color.Green }, tooltip: getTooltip(day) }]}
+          title={{ value: formatDate(day.date), tooltip: getTooltip(day) }}
+          subtitle={{
+            value: `${day.models.length} model${day.models.length > 1 ? "s" : ""}`,
+            tooltip: getTooltip(day),
+          }}
+          accessories={[
+            { text: { value: `$${(day.totalCost ?? 0).toFixed(2)}`, color: Color.Green } },
+            { text: { value: `Input: ${day.inputTokens ?? 0}`, color: Color.SecondaryText } },
+            { text: { value: `Output: ${day.outputTokens ?? 0}`, color: Color.SecondaryText } },
+            { text: { value: `Tokens: ${day.totalTokens ?? 0}`, color: Color.Blue } },
+          ]}
           actions={
             <ActionPanel>
               <Action title="Refresh" icon="arrow.clockwise" onAction={fetch} />
@@ -127,13 +143,17 @@ export default function Command() {
         />
       ))}
 
-      {totalCost > 0 && (
+      {days.length > 0 && (
         <List.Section title="Summary">
           <List.Item
-            title="7-Day Total"
-            subtitle={`$${totalCost.toFixed(2)}`}
+            title="12-Week Total"
+            subtitle={`$${days.reduce((s, d) => s + (d.totalCost ?? 0), 0).toFixed(2)}`}
             icon={{ source: "dollarsign.circle.fill", tintColor: Color.Green }}
-            accessories={[{ text: "Last 7 days" }]}
+            accessories={[
+              { text: `Input: ${days.reduce((s, d) => s + (d.inputTokens ?? 0), 0)}`, color: Color.SecondaryText },
+              { text: `Output: ${days.reduce((s, d) => s + (d.outputTokens ?? 0), 0)}`, color: Color.SecondaryText },
+              { text: `Tokens: ${days.reduce((s, d) => s + (d.totalTokens ?? 0), 0)}`, color: Color.Blue },
+            ]}
           />
         </List.Section>
       )}
