@@ -1,3 +1,3 @@
 # ccost
 
-claude code costs
+raycast extension for claude code costs
