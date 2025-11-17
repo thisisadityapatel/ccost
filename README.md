@@ -3,6 +3,8 @@
 
 Raycast extension for claude code costs. (credits: [ccusage](https://github.com/ryoppippi/ccusage) 🦁)
 
+Publishing PR (pending review): [Pull Request](https://github.com/raycast/extensions/pull/22937)
+
 <img width="914" height="629" alt="Screenshot 2025-11-17 at 10 06 29 AM" src="https://github.com/user-attachments/assets/f679bcd9-0a46-4ba0-9fd1-2fdf5d7146e1" />
 
 ### Setup
