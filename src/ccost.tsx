@@ -159,7 +159,7 @@ export default function Command() {
   };
 
   return (
-    <List isLoading={isLoading} navigationTitle="Claude Cost (12 Weeks)">
+    <List isLoading={isLoading} navigationTitle="Claude Code Costs">
       <List.Section title="CCost - Claude Code Costs">
         {days.map((day) => (
           <List.Item
