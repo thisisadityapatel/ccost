@@ -33,6 +33,28 @@ interface ModelSummary {
   color: Color;
 }
 
+interface ModelBreakdown {
+  modelName: string;
+  cost?: number;
+  inputTokens?: number;
+  outputTokens?: number;
+  cacheCreationTokens?: number;
+  cacheReadTokens?: number;
+}
+
+interface WeeklyUsage {
+  week: string;
+  totalCost?: number;
+  inputTokens?: number;
+  outputTokens?: number;
+  totalTokens?: number;
+  modelBreakdowns?: ModelBreakdown[];
+}
+
+interface UsageResponse {
+  weekly?: WeeklyUsage[];
+}
+
 async function run(cmd: string): Promise<string> {
   const shell = process.env.SHELL?.includes("zsh") ? "zsh" : "bash";
   const { stdout, stderr } = await execAsync(`${shell} -l -c "${cmd.replace(/"/g, '\\"')}"`);
@@ -48,7 +70,7 @@ export default function Command() {
     setIsLoading(true);
     try {
       const raw = await run("npx ccusage@latest weekly --json");
-      const data = JSON.parse(raw);
+      const data = JSON.parse(raw) as UsageResponse;
       if (!data.weekly?.length) throw new Error("No usage data");
 
       const colorMap: Record<string, Color> = {
@@ -62,11 +84,11 @@ export default function Command() {
       twelveWeeksAgo.setDate(now.getDate() - 12 * 7);
 
       const recent = data.weekly
-        .filter((d: any) => new Date(d.week) >= twelveWeeksAgo)
-        .sort((a: any, b: any) => new Date(b.week).getTime() - new Date(a.week).getTime());
+        .filter((d: WeeklyUsage) => new Date(d.week) >= twelveWeeksAgo)
+        .sort((a: WeeklyUsage, b: WeeklyUsage) => new Date(b.week).getTime() - new Date(a.week).getTime());
 
-      const normalized: Day[] = recent.map((d: any) => {
-        const models = (d.modelBreakdowns ?? []).map((m: any) => {
+      const normalized: Day[] = recent.map((d: WeeklyUsage) => {
+        const models = (d.modelBreakdowns ?? []).map((m: ModelBreakdown) => {
           const key = m.modelName.includes("sonnet")
             ? "sonnet"
             : m.modelName.includes("haiku")
@@ -102,8 +124,9 @@ export default function Command() {
       });
 
       setDays(normalized);
-    } catch (e: any) {
-      showToast({ style: Toast.Style.Failure, title: "Error", message: e.message });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      showToast({ style: Toast.Style.Failure, title: "Error", message });
     } finally {
       setIsLoading(false);
     }
@@ -190,13 +213,21 @@ export default function Command() {
         <List.Section title="Summary">
           <List.Item
             title="12-Week Total"
-            // --- MODIFIED: Removed subtitle ---
             icon={{ source: Icon.Coins, tintColor: Color.Green }}
             accessories={[
-              { text: { value: `In: ${days.reduce((s, d) => s + (d.inputTokens ?? 0), 0)}`, color: Color.SecondaryText } },
-              { text: { value: `Out: ${days.reduce((s, d) => s + (d.outputTokens ?? 0), 0)}`, color: Color.SecondaryText } },
+              {
+                text: {
+                  value: `In: ${days.reduce((s, d) => s + (d.inputTokens ?? 0), 0)}`,
+                  color: Color.SecondaryText,
+                },
+              },
+              {
+                text: {
+                  value: `Out: ${days.reduce((s, d) => s + (d.outputTokens ?? 0), 0)}`,
+                  color: Color.SecondaryText,
+                },
+              },
               { text: { value: `Tokens: ${days.reduce((s, d) => s + (d.totalTokens ?? 0), 0)}`, color: Color.Blue } },
-              // --- MODIFIED: Added cost as a green tag ---
               { tag: { value: `$${days.reduce((s, d) => s + (d.totalCost ?? 0), 0).toFixed(2)}`, color: Color.Green } },
             ]}
           />
@@ -205,13 +236,11 @@ export default function Command() {
             <List.Item
               key={model.name}
               title={model.name}
-              // --- MODIFIED: Removed subtitle ---
               icon={{ source: Icon.Circle, tintColor: model.color }}
               accessories={[
                 { text: { value: `In: ${model.inputTokens}`, color: Color.SecondaryText } },
                 { text: { value: `Out: ${model.outputTokens}`, color: Color.SecondaryText } },
                 { text: { value: `Tokens: ${model.totalTokens}`, color: Color.Blue } },
-                // --- MODIFIED: Added cost as a green tag ---
                 { tag: { value: `$${model.cost.toFixed(2)}`, color: Color.Green } },
               ]}
             />
